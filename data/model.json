@@ -1,0 +1,22 @@
+[
+  {
+    "name": "name",
+    "type": "char"
+  },
+  {
+    "name": "ref_name",
+    "type": "char"
+  },
+  {
+    "name": "ref_date",
+    "type": "date"
+  },
+  {
+    "name": "cnt",
+    "type": "int"
+  },
+  {
+    "name": "total",
+    "type": "numeric"
+  }
+]
