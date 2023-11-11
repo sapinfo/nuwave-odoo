@@ -1,5 +1,8 @@
 # nuwave-odoo README
 
+//python3 odoo-bin scaffold mymodule custom
+//manifest 에서 'security/ir.model.access.csv', 이걸 열어줘야 보인다.
+//
 vsce package 이거할때 아래 에러나면 기존에 있던 여기 문자열 다 지워라.
 ERROR Make sure to edit the README.md file before you package or publish your extension.
 
