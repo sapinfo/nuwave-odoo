@@ -181,6 +181,8 @@ function viewFile(
       </field>
     </record>
 
+    
+
     <!-- actions opening views on models -->
 
     <record model="ir.actions.act_window" id="${moduleName}.action_window">
@@ -559,9 +561,9 @@ Long description of module's purpose
         'views/${moduleName}_templates.xml', # Portal Templates
     ],
     # only loaded in demonstration mode
-    'data': [
-        'data/${moduleName}_demo.xml',
-    ],
+    #'data': [
+    #    'data/${moduleName}_demo.xml',
+    #],
 }    
 `;
   fs.writeFileSync(mainfestPath, content);
