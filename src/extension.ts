@@ -66,6 +66,8 @@ export function activate(context: vscode.ExtensionContext) {
             //if (1 === 1) {
             fs.mkdirSync(modulePath);
 
+            
+
             //model data
             const medelSchemePath = path.join(folderPath, `data/model.json`);
             console.log(medelSchemePath);
@@ -76,6 +78,9 @@ export function activate(context: vscode.ExtensionContext) {
             modelSchemeJson.forEach(function (model: any) {
               console.log(model.name);
             });
+
+            //app icon file
+            iconFile(modulePath);
 
             //main file
             rootIniFile(modulePath);
@@ -264,13 +269,14 @@ function viewTemplateFile(moduleName: string, modulePath: string) {
 
 function menuFile(moduleName: string, modulePath: string) {
   const menuPath = path.join(modulePath, "views", `${moduleName}_menus.xml`);
+  const capital = capitalizeFirstLetter(moduleName);
   var content = `
 <odoo>
   <data>
     
     <!-- Top menu item -->
 
-    <menuitem name="${moduleName}" id="${moduleName}.menu_root" />
+    <menuitem name="${capital}" id="${moduleName}.menu_root" />
 
     <!-- menu categories -->
 
@@ -341,12 +347,11 @@ function modelFile(
   var content = `
 # -*- coding: utf-8 -*-
 
-from odoo import models, fields, api, _
-
+from odoo import _, api, fields, models
 
 class ${capital}(models.Model):
     _name = '${moduleName}.${moduleName}'
-    _description = '${moduleName}.${moduleName}' 
+    _description = 'This is a ${moduleName}.${moduleName}.' 
     
     `;
 
@@ -396,6 +401,9 @@ function modelInitFile(moduleName: string, modulePath: string) {
   const modelIniPath = path.join(modulePath, "models", "__init__.py");
   var content = `
 # -*- coding: utf-8 -*-
+# import할 파이썬 파일들을 밑에 나열해라.
+# 이름명 규칙은 모듈명_models
+
 
 from . import ${moduleName}_models
 
@@ -529,6 +537,8 @@ function manifestFile(moduleName: string, modulePath: string) {
   var content = `
 # -*- coding: utf-8 -*-
 
+# https://www.odoo.com/documentation/17.0/developer/reference/backend/module.html
+
 {
     'name': "${capital}",
 
@@ -548,6 +558,9 @@ Long description of module's purpose
     'version': '0.1',
     'sequence': 1,
     'license': 'LGPL-3',
+    'application': True,
+    'installable': True,
+    'auto_install': False,
 
     # any module necessary for this one to work correctly
     'depends': ['base'],
@@ -574,9 +587,24 @@ function rootIniFile(modulePath: string) {
 
   var content = `
 # -*- coding: utf-8 -*-
-
+# import할 폴더명을 밑에 나열해라. 그럼 그 폴더에 있는 파이썬파일들이 임포트 될거다.
+# 여기서는 models 폴더하고 controllers 를 일단 기본으로 포함해라.
+#
 from . import controllers
 from . import models
+`;
+  fs.writeFileSync(rootIniPath, content);
+}
+
+function iconFile(modulePath: string) {
+  fs.mkdirSync(path.join(modulePath, "static"));
+  fs.mkdirSync(path.join(modulePath, "static", "description"));
+
+  const rootIniPath = path.join(modulePath, "static", "description", 'readme.txt');
+
+  var content = `
+icon.png 파일을 여기 폴더에 복사하시지요.
+flaticon.com에 엄청나게 무료인걸들이 많이 있소이다. 512*512 사이즈로 하시고.
 `;
   fs.writeFileSync(rootIniPath, content);
 }
