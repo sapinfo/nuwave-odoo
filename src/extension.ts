@@ -437,7 +437,7 @@ class ${capital}(models.Model):
 
     @api.model
     def create(self, values):
-        # Add code here
+        # make sequence
         if values.get("${moduleName}_number", ("New")) == _("New"):
             values["${moduleName}_number"] = self.env["ir.sequence"].next_by_code(
                 "${moduleName}.sequence") or _("New")
