@@ -67,8 +67,6 @@ export function activate(context: vscode.ExtensionContext) {
             //if (1 === 1) {
             fs.mkdirSync(modulePath);
 
-            
-
             //model data
             const medelSchemePath = path.join(folderPath, `data/model.json`);
             console.log(medelSchemePath);
@@ -97,6 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
             //demo
             fs.mkdirSync(path.join(modulePath, "data"));
             demoFile(moduleName, modulePath, modelSchemeJson);
+            sequenceFile(moduleName, modulePath, modelSchemeJson);
 
             //models
             fs.mkdirSync(path.join(modulePath, "models"));
@@ -162,15 +161,72 @@ function viewFile(
     "views",
     `${moduleName}_views.xml`
   );
+  const capital = capitalizeFirstLetter(moduleName);
+
   var content = `
 <odoo>
   <data>
-    <!-- explicit list view definition -->
 
-    <record model="ir.ui.view" id="${moduleName}.list">
-      <field name="name">${moduleName} list</field>
+    <!-- ${moduleName} form view -->
+    <record id="${moduleName}_view_form" model="ir.ui.view">
+      <field name="name">${moduleName}.view.form</field>
       <field name="model">${moduleName}.${moduleName}</field>
       <field name="arch" type="xml">
+        <form string="">
+          <!--sheet는
+          div full width 와 같다.-->
+          <sheet>
+            <div>
+                <h1>
+                  <field name="${moduleName}_number" readonly="1" />
+                </h1>
+            </div>
+
+            <!--group도
+            div full width 와 같은데 하나의 sheet 속에 두개 그룹으로 나눌경우 아래와 같이 해주면 좌/우 양쪽으로 정렬이 잘된다.-->
+            <group>
+              <group>
+                <!-- Add your fields here -->
+                <!-- <field name="name" /> -->
+              </group>
+              <group>`;
+
+  modelSchemeJson.forEach(function (model: any) {
+    content =
+      content +
+      `
+                        <field name="${model.name}" />`;
+  });
+
+  content =
+    content +
+    `</group>
+            </group>
+
+          </sheet>
+          <sheet>
+            <group>
+              <!-- Add your fields here -->
+              <!-- <field name="note" /> -->
+
+            </group>
+
+          </sheet>
+          <div class="oe_chatter">
+            <field name="message_follower_ids" widget="mail_followers" />
+            <field name="activity_ids" widget="mail_activity" />
+            <field name="message_ids" widget="mail_thread" />
+          </div>
+        </form>
+      </field>
+    </record>
+
+    <!-- ${moduleName}.${moduleName} tree view -->
+    <record id="${moduleName}.${moduleName}_view_tree" model="ir.ui.view">
+    <field name="name">${moduleName}.${moduleName}.view.tree</field>
+    <field name="model">${moduleName}.${moduleName}</field>
+    <field name="arch" type="xml">
+        <!-- ${moduleName}_number 칼럼추가할것 -->
         <tree>`;
 
   modelSchemeJson.forEach(function (model: any) {
@@ -188,41 +244,29 @@ function viewFile(
     </record>
 
     
-
-    <!-- actions opening views on models -->
-
-    <record model="ir.actions.act_window" id="${moduleName}.action_window">
-      <field name="name">${moduleName} window</field>
-      <field name="res_model">${moduleName}.${moduleName}</field>
-      <field name="view_mode">tree,form</field>
+    <!-- ${moduleName} action window -->
+    <record id="${moduleName}_action" model="ir.actions.act_window">
+     <field name="name">${capital}</field>
+     <field name="type">ir.actions.act_window</field>
+     <field name="res_model">${moduleName}.${moduleName}</field>
+     <field name="view_mode">tree,form</field>
+     <!-- <field name="view_type">form</field> -->
+     <!-- <field name="domain">[]</field> -->
+     <!-- <field name="context">{}</field> -->
+     <!-- <field name="target">{current}</field> -->
+     <field name="help" type="html">
+     <p class="oe_view_nocontent_create">
+         <!-- Add Text Here -->
+     </p><p>
+         <!-- More details about what a user can do with this object will be OK --> 
+     
+     </p>
+ </field>     
+      
     </record>
-
-    <!-- server action to the one above -->
-
-    <record model="ir.actions.server" id="${moduleName}.action_server">
-      <field name="name">${moduleName} server</field>
-      <field name="model_id" ref="model_${moduleName}_${moduleName}" />
-      <field name="state">code</field>
-      <field name="code">
-        action = { "type": "ir.actions.act_window", "view_mode": "tree,form",
-        "res_model": model._name, }
-      </field>
-    </record>
-
-    <!-- actions -->
-
-    <menuitem
-      name="List"
-      id="${moduleName}.menu_1_list"
-      parent="${moduleName}.menu_1"
-      action="${moduleName}.action_window"
-    />
-    <menuitem
-      name="Server to list"
-      id="${moduleName}"
-      parent="${moduleName}.menu_2"
-      action="${moduleName}.action_server"
-    />    
+     
+    <!-- This Menu Item must have a parent and an action -->
+    <menuitem id="${moduleName}_menu_act" name="${capital}" parent="${moduleName}_menu_categ1" action="${moduleName}_action" sequence="10"/>
 
 
   </data>
@@ -275,26 +319,19 @@ function menuFile(moduleName: string, modulePath: string) {
 <odoo>
   <data>
     
-    <!-- Top menu item -->
+    <!-- This Menu Item will appear in the Upper bar, that's why It needs NO parent or action -->
+    <menuitem id="${moduleName}_menu_root" name="${capital}" sequence="0" web_icon="${moduleName},static/description/icon.png"/>
 
-    <menuitem name="${capital}" id="${moduleName}.menu_root" />
+    <!-- This Menu Item Must have a parent -->
+    <menuitem id="${moduleName}_menu_categ1" name="${capital}_menu1" parent="${moduleName}_menu_root" sequence="10"/>
 
-    <!-- menu categories -->
+    <!-- This Menu Item Must have a parent -->
+    <menuitem id="${moduleName}menu_categ2" name="${capital}_menu2" parent="${moduleName}_menu_root" sequence="20"/>
 
-    <menuitem
-      name="Menu 1"
-      id="${moduleName}.menu_1"
-      parent="${moduleName}.menu_root"
-    />
-    <menuitem
-      name="Menu 2"
-      id="${moduleName}.menu_2"
-      parent="${moduleName}.menu_root"
-    />
-
-
+    
   </data>
 </odoo>
+
 
 
   `;
@@ -352,8 +389,13 @@ from odoo import _, api, fields, models
 
 class ${capital}(models.Model):
     _name = '${moduleName}.${moduleName}'
+    _inherit = ['mail.thread', 'mail.activity.mixin'] #채터섹션을 위해 mail 관련 종속추가
     _description = 'This is a ${moduleName}.${moduleName}.' 
-    
+    rec_name = 'name' # 콤보박스에 보여질 값, 이름만 또는 코드+이름 이런식으로, field명을 써라. 
+
+    #${moduleName}_number 는 default=lambda self:_("New") 값을 반드시 주기바란다.
+    #tracking=True,required=True,copy=True,index=False,default=lambda self:_("New")
+    #${moduleName}_number = fields.Char("${capital} number", default=lambda self: _("New"))
     `;
 
   modelSchemeJson.forEach(function (model: any) {
@@ -379,7 +421,9 @@ class ${capital}(models.Model):
     content =
       content +
       `
-    ${model.name}=fields.${value}("${capitalizeFirstLetter(model.name)}")`;
+    ${model.name}=fields.${value}("${capitalizeFirstLetter(
+        model.name
+      )}", tracking=True)`;
   });
 
   content =
@@ -391,7 +435,13 @@ class ${capital}(models.Model):
         for record in self:
             record.value2 = float(record.value) / 100
 
-  
+    @api.model
+    def create(self, values):
+        # Add code here
+        if values.get("${moduleName}_number", ("New")) == _("New"):
+            values["${moduleName}_number"] = self.env["ir.sequence"].next_by_code(
+                "${moduleName}.sequence") or _("New")
+        return super(${capital}, self).create(values)  
 
 `;
 
@@ -474,6 +524,33 @@ function demoFile(
 `;
 
   fs.writeFileSync(demoPath, content);
+}
+
+function sequenceFile(
+  moduleName: string,
+  modulePath: string,
+  modelSchemeJson: any
+) {
+  const sequencePath = path.join(modulePath, "data", `sequence.xml`);
+  const capital = capitalizeFirstLetter(moduleName);
+
+  var content = `<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sequences for lead mining requests -->
+        <record id="${moduleName}_sequence" model="ir.sequence">
+            <field name="name">${capital} Sequence</field>
+            <field name="code">${moduleName}.sequence</field>
+            <!-- 원하는 prefix로 바꿔 -->
+            <field name="prefix">RMA</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False" />
+        </record>
+    </data>
+</odoo>
+`;
+
+  fs.writeFileSync(sequencePath, content);
 }
 
 function capitalizeFirstLetter(data: string) {
@@ -565,11 +642,13 @@ Long description of module's purpose
     'auto_install': False,
 
     # any module necessary for this one to work correctly
-    'depends': ['base'],
+    # chatter 를 위해 mail 종속추가.
+    'depends': ['base', 'mail'], 
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
+        "data/sequence.xml",
         'views/${moduleName}_menus.xml',  # Backend views
 
         'views/${moduleName}_views.xml',  # Backend views
@@ -602,7 +681,12 @@ function iconFile(modulePath: string) {
   fs.mkdirSync(path.join(modulePath, "static"));
   fs.mkdirSync(path.join(modulePath, "static", "description"));
 
-  const rootIniPath = path.join(modulePath, "static", "description", 'readme.txt');
+  const rootIniPath = path.join(
+    modulePath,
+    "static",
+    "description",
+    "readme.txt"
+  );
 
   var content = `
 icon.png 파일을 여기 폴더에 복사하시지요.
