@@ -379,7 +379,7 @@ class ${capital}(models.Model):
     content =
       content +
       `
-    ${model.name}=fields.${value}()`;
+    ${model.name}=fields.${value}("${capitalizeFirstLetter(model.name)}")`;
   });
 
   content =
@@ -477,6 +477,7 @@ function demoFile(
 }
 
 function capitalizeFirstLetter(data: string) {
+  data = data.replaceAll("_", " ");
   return data.charAt(0).toUpperCase() + data.slice(1);
 }
 
