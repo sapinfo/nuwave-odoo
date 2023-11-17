@@ -18,5 +18,17 @@
   {
     "name": "total",
     "type": "numeric"
+  },
+  {
+    "name": "gender",
+    "type": "selection"
+  },
+  {
+    "name": "age",
+    "type": "integer"
+  },
+  {
+    "name": "age_group",
+    "type": "selection"
   }
 ]

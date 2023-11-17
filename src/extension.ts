@@ -175,6 +175,21 @@ function viewFile(
         <form string="">
           <!--sheet는
           div full width 와 같다.-->
+          <!-- <header>
+
+            <div class="oe_button_box" name="botton_box">
+              <button name="open_sales_order" type="object"
+                class="oe_stat_button" icon="fa-archive">
+                <field name="sales_order_count" string="Sales order" widget="statinfo" />
+              </button>
+
+              <button name="%(rma_sales_order_action)d" type="action"
+                class="oe_stat_button" icon="fa-archive">
+                <field name="sales_order_count" string="Sales order by action" widget="statinfo" />
+              </button>
+
+            </div>
+          </header>          
           <sheet>
             <div>
                 <h1>
@@ -243,6 +258,36 @@ function viewFile(
       </field>
     </record>
 
+    <!-- ${moduleName} search view -->
+    <record id="rma_view_search" model="ir.ui.view">
+      <field name="name">${moduleName}.view.search</field>
+      <field name="model">${moduleName}.${moduleName}</field>
+      <field name="arch" type="xml">
+        <search string="Search Description">
+        <!-- 기본검색를 추가해라 -->
+        <!-- domain이라는거는 where 조건을 풀어쓰는것이다. 칼럼,조건,값 이런식으로 , 껄쇠괄호안에 둥근괄호로 묶는다. -->
+          <field name="name"
+            filter_domain="['|', ('name', 'ilike', self), ('${moduleName}_number','ilike',self)]" />
+          <field name="${moduleName}_number" filter_domain="[('${moduleName}_number','ilike',self)]" />
+          <field name="name" filter_domain="[('name','ilike',self)]" />
+          <!-- <seperator /> -->
+          <!-- 기본필터를 추가해라 -->
+          <!-- <filter string="Test data" name="Test" domain="[('name','ilike','test')]" /> -->
+          <!-- <filter string="Total > 10" name="Total" domain="[('total','>=',10)]" /> -->
+          <!-- <filter string="Mail" name="male" domain="[('gender','=','male')]" /> -->
+          <!-- <filter string="Female" name="female" domain="[('gender','=','female')]" /> -->
+          <!-- 기본그룹핑을 추가해라 -->
+          <!-- <group expand="0" string="Group by ">
+            <filter string="Gender" name="gender" context="{'group_by': 'gender'}"
+            />
+          </group> -->
+
+
+        </search>
+      </field>
+    </record>
+
+
     
     <!-- ${moduleName} action window -->
     <record id="${moduleName}_action" model="ir.actions.act_window">
@@ -252,7 +297,8 @@ function viewFile(
      <field name="view_mode">tree,form</field>
      <!-- <field name="view_type">form</field> -->
      <!-- <field name="domain">[]</field> -->
-     <!-- <field name="context">{}</field> -->
+     <!-- 이 프로그램시작시 디폴트 필터를 주려면 search_default_에 filter명을 추가해서 아래처럼 1로 세팅해라.  -->
+     <!-- <field name="context">{"search_default_male":1}</field> -->
      <!-- <field name="target">{current}</field> -->
      <field name="help" type="html">
      <p class="oe_view_nocontent_create">
@@ -386,16 +432,27 @@ function modelFile(
 # -*- coding: utf-8 -*-
 
 from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 class ${capital}(models.Model):
     _name = '${moduleName}.${moduleName}'
     _inherit = ['mail.thread', 'mail.activity.mixin'] #채터섹션을 위해 mail 관련 종속추가
     _description = 'This is a ${moduleName}.${moduleName}.' 
-    rec_name = 'name' # 콤보박스에 보여질 값, 이름만 또는 코드+이름 이런식으로, field명을 써라. 
+    _order = 'id desc' # 리스트 뷰에서 데이터 순서, 최신순으로 정렬
+    #
+    #
+    rec_name = 'name' # 다른곳에서 참조시 콤보박스에 보여질 값, 이름만 또는 코드+이름 이런식으로, field명을 써라. 
 
-    #${moduleName}_number 는 default=lambda self:_("New") 값을 반드시 주기바란다.
-    #tracking=True,required=True,copy=True,index=False,default=lambda self:_("New")
-    #${moduleName}_number = fields.Char("${capital} number", default=lambda self: _("New"))
+    # 번호채번필드는 ${moduleName}_number 는 default=lambda self:_("New") 값을 반드시 주기바란다.
+    #
+    # 필드 옵션들: tracking=True,required=True,copy=True,index=False,default=lambda self:_("New"), related="partner_id.email"
+    #
+    # 번호채번필드는 ${moduleName}_number = fields.Char("${capital} number", default=lambda self: _("New"))
+    #
+    # compute 필드는 compute="set_age_group", store=True, readonly=True 이런식으로 함수명을 추가하고 함수를 구현해준다.
+    # 
+    # track_visibility="always" track_visibility="onchange" 이거 Tracking 하고 똑같은거 같은데..
+
     `;
 
   modelSchemeJson.forEach(function (model: any) {
@@ -414,34 +471,105 @@ class ${capital}(models.Model):
       value = "Datetime";
     } else if (model.type === "text") {
       value = "Text";
+    } else if (model.type === "selection") {
+      value = "Selection";
     } else {
       value = "Char";
     }
 
-    content =
-      content +
-      `
+    if (model.type === "selection") {
+      content =
+        content +
+        `
+    ${
+      model.name
+    }=fields.${value}([('db_value1','string1'), ('db_value2','string2')], default='db_value1',  string='${capitalizeFirstLetter(
+          model.name
+        )}', tracking=True)`;
+    } else {
+      content =
+        content +
+        `
     ${model.name}=fields.${value}("${capitalizeFirstLetter(
-        model.name
-      )}", tracking=True)`;
+          model.name
+        )}", tracking=True)`;
+    }
   });
 
   content =
     content +
     `
+    #
+    # 디폴트값지정하기, 함수를 뒤에선언하면 못찾는다고 에러난다.
+    #
+    def _get_default_note(self):
+      return 'write note here.'
+    note = fields.Text('Note', default=_get_default_note)
+    #
+    #
+    # Many2one에 연결된 속성정보 자동으로 가져오기
+    # 아래는 연결된 파트너의 이멜을 자동으로 가져온다.
+    # 그리고 필드를 뷰에 추가해준다.
+    #
+    partner_id = fields.Many2one(
+      "res.partner", string="Customer", required=True)
+    email = fields.Char("Email", related="partner_id.email")
 
-    @api.depends('value')
-    def _value_pc(self):
+    #계산된 필드 , 판매오더 갯수 가져오기
+    #
+    def get_sales_order_count(self):
         for record in self:
-            record.value2 = float(record.value) / 100
+            count = record.env["sale.order"].search_count(
+                [('partner_id', '=', record.id)])
+            record.sales_order_count = count
 
+    sales_order_count = fields.Integer(
+        "Sales order connt", compute=get_sales_order_count)    
+
+    #제약사항 걸기
+    #
+    @api.constrains('age')
+    def check_age(self):
+        for rec in self:
+            if rec.age <= 5:
+                raise ValidationError("The age must be greater then 18")
+
+  
+    #종속 걸기
+    #
+    @api.depends('age')
+    def set_age_group(self):
+        for record in self:
+            if record.age:
+                if record.age < 18:
+                    record.age_group = "minor"
+                else:
+                    record.age_group = "adult"
+
+    #생성자 오버라이드
+    #
     @api.model
     def create(self, values):
-        # make sequence
-        if values.get("${moduleName}_number", ("New")) == _("New"):
-            values["${moduleName}_number"] = self.env["ir.sequence"].next_by_code(
-                "${moduleName}.sequence") or _("New")
+        for record in self:
+          # 시퀀스 생성 로직
+          if values.get("${moduleName}_number", ("New")) == _("New"):
+              values["${moduleName}_number"] = record.env["ir.sequence"].next_by_code(
+                  "${moduleName}.sequence") or _("New")
+          #
         return super(${capital}, self).create(values)  
+
+    #판매오더 화면 열기, 뷰의 버튼하고 연결됨.
+    #
+    def open_sales_order(self):
+        return {
+            'name': _("Sales order"),
+            'domain': [('partner_id', '=', self.id)],
+            'res_model': 'sale.order',
+            'view_id': False,
+            'view_mode': 'tree,form',
+            'type': 'ir.actions.act_window'
+
+        }    
 
 `;
 
@@ -643,7 +771,12 @@ Long description of module's purpose
 
     # any module necessary for this one to work correctly
     # chatter 를 위해 mail 종속추가.
-    'depends': ['base', 'mail'], 
+    'depends': [
+      'base',
+      'mail', # 이멜 기능추가
+      'sale'  # 판매모듈 추가
+
+    ],
 
     # always loaded
     'data': [
