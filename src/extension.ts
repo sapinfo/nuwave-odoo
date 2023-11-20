@@ -166,6 +166,9 @@ function viewFile(
   var content = `
 <odoo>
   <data>
+    <!-- 칼럼에 상태값이 따라 보이고/안보이고 필수/옵션 지정하려면  invisible="state in ['confirmed']"
+          required="state in ['draft']" -->
+    <!- 트리뷰에서 합계 보여주기 sum="Total" 이거 추가해라-->
 
     <!-- ${moduleName} form view -->
     <record id="${moduleName}_view_form" model="ir.ui.view">
@@ -175,18 +178,39 @@ function viewFile(
         <form string="">
           <!--sheet는
           div full width 와 같다.-->
-          <!-- <header>
+          <header>
+            <!--확정버튼-->
+            <button name="action_confirm" type="object" string="Confirm"
+              invisible="state not in ['draft']"
+              class="oe_highlight" />
+
+            <!--취소버튼-->
+            <button name="action_cancel" type="object" string="Cancel"
+            invisible="state not in ['confirmed']"
+            class="oe_highlight" />
+
+            <!--상태바-->
+            <field name="state" widget="statusbar"
+              statusbar_visible="draft,open, confirmed, canceled" />          
 
             <div class="oe_button_box" name="botton_box">
+              <!--화면열기 버튼-->
               <button name="open_sales_order" type="object"
                 class="oe_stat_button" icon="fa-archive">
                 <field name="sales_order_count" string="Sales order" widget="statinfo" />
               </button>
 
+              <!--액션 버튼-->
               <button name="%(rma_sales_order_action)d" type="action"
                 class="oe_stat_button" icon="fa-archive">
                 <field name="sales_order_count" string="Sales order by action" widget="statinfo" />
               </button>
+
+              <!--아카이브 버튼-->
+              <button name="toggle_active" type="object" string="Restore" icon="fa-archive"
+              class="oe_stat_button">
+              <field name="active" widget="boolean_button" />
+            </button>              
 
             </div>
           </header>          
@@ -225,6 +249,32 @@ function viewFile(
               <!-- <field name="note" /> -->
 
             </group>
+
+            <!-- one2many 필드 정의하기 -->
+            <notebook>
+              <page string="Lines">
+                <field name="rma_line_ids">
+                  <tree> <!--editable="bottom"-->
+                    <field name="product_id" />
+                    <field name="qty" />
+                    <field name="rma_id" invisible="1" />
+                  </tree>
+                  <form>
+                    <group>
+                      <field name="product_id" />
+                    </group>
+                    <group>
+                      <field name="qty" />
+                      <field name="rma_id" invisible="1" />
+                    </group>
+                  </form>
+                </field>
+              </page>
+              <page string="Etc">
+
+              </page>
+
+            </notebook>            
 
           </sheet>
           <div class="oe_chatter">
@@ -389,6 +439,14 @@ function securityFile(moduleName: string, modulePath: string) {
   const securityPath = path.join(modulePath, "security", "ir.model.access.csv");
   var content = `id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_${moduleName}_${moduleName},${moduleName}.${moduleName},model_${moduleName}_${moduleName},base.group_user,1,1,1,1
+${moduleName}.access_${moduleName}_line,access_${moduleName}_line,${moduleName}.model_${moduleName}_line,base.group_user,1,1,1,1
+${moduleName}.access_${moduleName}_${moduleName}_user,access_${moduleName}_${moduleName}_user,${moduleName}.model_${moduleName}_${moduleName},${moduleName}.group_${moduleName}_user,1,1,1,1
+${moduleName}.access_${moduleName}_line_user,access_${moduleName}_line_user,${moduleName}.model_${moduleName}_line,${moduleName}.group_${moduleName}_user,1,1,1,1
+${moduleName}.access_${moduleName}_${moduleName}_admin,access_${moduleName}_${moduleName}_admin,${moduleName}.model_${moduleName}_${moduleName},${moduleName}.group_${moduleName}_manager,1,1,1,1
+${moduleName}.access_${moduleName}_line_admin,access_${moduleName}_line_admin,${moduleName}.model_${moduleName}_line,${moduleName}.group_${moduleName}_manager,1,1,1,1
+
+
+
 `;
 
   fs.writeFileSync(securityPath, content);
@@ -410,8 +468,54 @@ access_${moduleName}_${moduleName},${moduleName}.${moduleName},model_${moduleNam
     "security",
     `${moduleName}_security.xml`
   );
+  const capital = capitalizeFirstLetter(moduleName);
 
-  content = "";
+  content = `<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <!-- Category 정의  -->
+    <record id="model_category_${moduleName}" model="ir.module.category">
+        <field name="name">${capital} management</field>
+        <field name="description">Category for ${capital}</field>
+        <field name="sequence">1</field>
+    </record>
+
+
+    <!-- 일반유저 그룹 -->
+    <!-- Setting > User > ${capital}  mangent 에서 유저로 지정해라.  -->
+    <!-- category_id 를 지정하지 않으면 글로벌레벨에서 만들어진다.  -->
+    <record id="group_${moduleName}_user" model="res.groups">
+        <field name="name">${capital} user</field>
+        <field name="category_id" ref="model_category_${moduleName}"></field>
+    </record>
+
+    <!-- 매니저 그룹  -->
+    <!-- Setting > User > ${capital}  mangent 에서 매니저로 지정해라.  -->
+    <record id="group_${moduleName}_manager" model="res.groups">
+        <field name="name">${capital} Manager</field>
+        <field name="category_id" ref="model_category_${moduleName}"></field>
+        <!-- implied 의미 , 정의된 그룹을 상속한다는 의미  -->
+        <field name="implied_ids" eval="[(4, ref('group_${moduleName}_user'))]"></field>
+    </record>
+
+    <!-- 일반유저 룰  -->
+    <record id="${moduleName}_user_record_rule" model="ir.rule">
+        <field name="name">See only my data</field>
+        <field name="model_id" ref="model_${moduleName}_${moduleName}"></field>
+        <field name="domain_force">[('gender','=','male')]</field>
+        <!-- <field name="domain_force">[('create_uid','=','user.id')]</field> -->
+        <field name="groups" eval="[(4, ref('group_${moduleName}_user'))]"></field>
+    </record>
+
+    <!-- 매니저 룰  -->
+    <record id="${moduleName}_manager_record_rule" model="ir.rule">
+        <field name="name">See all data</field>
+        <field name="model_id" ref="model_${moduleName}_${moduleName}"></field>
+        <field name="domain_force">[]</field>
+        <field name="groups" eval="[(4, ref('group_${moduleName}_manager'))]"></field>
+    </record>
+
+</odoo>
+  `;
   fs.writeFileSync(securityRecordRulePath, content);
 }
 
@@ -550,10 +654,10 @@ class ${capital}(models.Model):
     #
     @api.model
     def create(self, values):
-        for record in self:
+        for value in values:
           # 시퀀스 생성 로직
-          if values.get("${moduleName}_number", ("New")) == _("New"):
-              values["${moduleName}_number"] = record.env["ir.sequence"].next_by_code(
+          if value.get("${moduleName}_number", ("New")) == _("New"):
+          value["${moduleName}_number"] = self.env["ir.sequence"].next_by_code(
                   "${moduleName}.sequence") or _("New")
           #
         return super(${capital}, self).create(values)  
@@ -570,6 +674,47 @@ class ${capital}(models.Model):
             'type': 'ir.actions.act_window'
 
         }    
+
+    # 상태관리
+    # 뷰에서 상태처리를 위한 버튼을 object type 으로 만들어라
+    #
+    state = fields.Selection(string='Status', selection=[(
+      'draft', 'Draft'), ('open', 'Open'), ('confirmed', 'Confirmed'), ('canceled', 'Canceled'),], index=True, readonly=True, default="draft")
+
+    def action_confirm(self):
+        for rec in self:
+            rec.state = "confirmed"
+
+    def action_cancel(self):
+        for rec in self:
+            rec.state = "canceled"
+    #
+    #
+    # one2many 필드 정의 하기, 부모자식간.
+    #
+    rma_line_ids = fields.One2many(
+      comodel_name='rma.line', inverse_name='rma_id', string='Lines')
+
+    #아카이브 정의하기
+    #
+    active = fields.Boolean("Active", default=True)
+
+
+# 자식 모델 정의하기
+#      
+class RmaLines(models.Model):
+  _name = 'rma.line'
+  _description = 'Rma Lines'
+
+  #부모키를 many2one으로 정의해주어야한다
+  #
+  rma_id = fields.Many2one(comodel_name='rma.rma', string='Rma #')
+
+  #제품가져오기 many2one 임.
+  #
+  product_id = fields.Many2one(
+      comodel_name='product.product', string='Product')
+  qty = fields.Integer(string='Quantity')
 
 `;
 
