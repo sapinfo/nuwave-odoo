@@ -654,12 +654,12 @@ class ${capital}(models.Model):
     #
     @api.model
     def create(self, values):
-        for value in values:
-          # 시퀀스 생성 로직
-          if value.get("${moduleName}_number", ("New")) == _("New"):
-          value["${moduleName}_number"] = self.env["ir.sequence"].next_by_code(
-                  "${moduleName}.sequence") or _("New")
-          #
+        #for value in values:
+        # 시퀀스 생성 로직
+        if values.get("${moduleName}_number", ("New")) == _("New"):
+        values["${moduleName}_number"] = self.env["ir.sequence"].next_by_code(
+                "${moduleName}.sequence") or _("New")
+        #
         return super(${capital}, self).create(values)  
 
     #판매오더 화면 열기, 뷰의 버튼하고 연결됨.
